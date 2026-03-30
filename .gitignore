@@ -1,0 +1,83 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv/
+.env
+*.egg-info
+dist/
+build/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*.iml
+
+# Data files
+*.tif
+*.tiff
+*.nc
+*.hdf
+*.h5
+GEE_Downloads/
+data/downloads/
+*.geotiff
+
+# Google Earth Engine & Google Cloud Credentials
+.earthengine/
+.earthengine-token
+.config/earthengine/
+credentials/
+.credentials/
+secrets/
+.secrets/
+auth/
+.auth/
+keys/
+.keys/
+*.json
+*.key
+*.pem
+*.p12
+*.pfx
+*.crt
+*.cer
+*.der
+google-credentials.json
+service-account*.json
+sa-key.json
+
+# Environment & Config
+.env*
+!.env.example
+config.ini
+settings.ini
+*.conf
+*.cfg
+
+# API Keys & Tokens
+*api*key*
+*secret*
+*token*
+*password*
+.earthengine-token
+.refresh_token
+
+# OS
+.DS_Store
+Thumbs.db
+.directory
+
+# Docker
+.dockerignore
+docker-compose.override.yml
+
+# Logs
+*.log
+logs/

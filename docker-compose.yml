@@ -1,0 +1,15 @@
+version: "3.9"
+
+services:
+  app:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./app:/app/app
+      # Mount GEE credentials from host machine
+      - ~/.config/earthengine:/root/.config/earthengine:ro
+    environment:
+      - PYTHONUNBUFFERED=1
+      - GEE_PROJECT_ID=${GEE_PROJECT_ID}
+    restart: unless-stopped
