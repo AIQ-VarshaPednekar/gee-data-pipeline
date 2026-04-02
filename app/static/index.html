@@ -382,12 +382,12 @@
                 <div class="form-group">
                     <label for="startDate">Start Date <span style="color: #999; font-size: 0.75rem;">(optional for
                             static datasets)</span></label>
-                    <input type="date" id="startDate" value="2023-01-01">
+                    <input type="date" id="startDate" value="2025-01-01">
                 </div>
                 <div class="form-group">
                     <label for="endDate">End Date <span style="color: #999; font-size: 0.75rem;">(optional for static
                             datasets)</span></label>
-                    <input type="date" id="endDate" value="2023-01-31">
+                    <input type="date" id="endDate" value="2025-01-31">
                 </div>
             </div>
 
@@ -408,6 +408,12 @@
                     </select>
                 </div>
                 <div id="regionInputContainer"></div>
+            </div>
+
+            <div class="form-group">
+                <label for="scaleInput">Resolution (metres) <span style="color: #999; font-size: 0.75rem;">optional — leave blank for native</span></label>
+                <input type="number" id="scaleInput" placeholder="e.g. 30" min="1" max="100000" step="1">
+                <small style="color: #666; font-size: 0.8rem;">Native resolution is shown after clicking Analyze Dataset</small>
             </div>
 
             <div class="form-group">
@@ -626,12 +632,15 @@
             const endDate = document.getElementById('endDate').value;
             const regionType = document.getElementById('regionType').value;
 
+            const scaleInput = document.getElementById('scaleInput').value;
+
             let requestData = {
                 dataset,
                 start_date: startDate,
                 end_date: endDate,
                 region_type: regionType,
-                region_name: regionType
+                region_name: regionType,
+                ...(scaleInput ? { scale: parseInt(scaleInput) } : {})
             };
 
             // Add region-specific data
@@ -712,19 +721,32 @@
                     }
 
                     // Size warning display
+                    // Scale/upsampling warning display
+                    let scaleWarningDisplay = '';
+                    if (result.scale_warning) {
+                        scaleWarningDisplay = `
+                            <div style="background: #fff3cd; padding: 0.85rem 1rem; border-radius: 6px;
+                                        margin: 0 0 1rem 0; border-left: 3px solid #f59e0b; font-size: 0.85rem;">
+                                ${result.scale_warning}
+                            </div>`;
+                    }
+
+                    // Size warning display
+                    // Size warning display
                     let sizeWarningDisplay = '';
                     if (result.size_warning) {
                         const warningColor = result.size_warning.type === 'size_limit' ? '#dc3545' : '#ffc107';
                         const warningBg = result.size_warning.type === 'size_limit' ? '#f8d7da' : '#fff3cd';
-
                         sizeWarningDisplay = `
-                                <div style="background: ${warningBg}; padding: 1rem; border-radius: 6px; margin: 1rem 0; border-left: 3px solid ${warningColor};">
-                                    <strong style="font-size: 0.85rem; color: ${warningColor};">⚠️ ${result.size_warning.message}</strong>
-                                    <ul style="margin: 0.5rem 0 0 1.25rem; font-size: 0.8rem; color: #666;">
-                                        ${result.size_warning.suggestions.map(s => `<li>${s}</li>`).join('')}
-                                    </ul>
-                                </div>`;
+                            <div style="background: ${warningBg}; padding: 1rem; border-radius: 6px; margin: 1rem 0; border-left: 3px solid ${warningColor};">
+                                <strong style="font-size: 0.85rem; color: ${warningColor};">⚠️ ${result.size_warning.message}</strong>
+                                <ul style="margin: 0.5rem 0 0 1.25rem; font-size: 0.8rem; color: #666;">
+                                    ${result.size_warning.suggestions.map(s => `<li>${s}</li>`).join('')}
+                                </ul>
+                            </div>`;
                     }
+
+                    // Download mode selection for temporal datasets
 
                     // Download mode selection for temporal datasets
                     let downloadModeSelector = '';
@@ -782,6 +804,7 @@
                                     ${result.description}
                                 </p>
                                 
+                                ${scaleWarningDisplay}
                                 ${sizeWarningDisplay}
                                 
                                 <div class="info-grid">
@@ -828,6 +851,11 @@
                                         <strong>Native Resolution</strong>
                                         <span>${result.native_resolution}</span>
                                     </div>
+                                    ${result.export_resolution !== result.native_resolution ? `
+                                    <div class="info-item" style="border-left-color: #f59e0b;">
+                                        <strong>Export Resolution</strong>
+                                        <span style="color: #d97706;">${result.export_resolution} ⚠️ custom</span>
+                                    </div>` : ''}
                                     <div class="info-item">
                                         <strong>Approx File Size</strong>
                                         <span>${result.estimated_size}</span>
@@ -924,6 +952,8 @@
             const regionType = document.getElementById('regionType').value;
             const exportFormat = document.getElementById('exportFormat').value;
 
+            const scaleInput = document.getElementById('scaleInput').value;
+
             let requestData = {
                 dataset,
                 start_date: startDate,
@@ -931,7 +961,8 @@
                 region_type: regionType,
                 export_format: exportFormat,
                 export_to: 'gcs',
-                gcs_bucket: bucketName
+                gcs_bucket: bucketName,
+                ...(scaleInput ? { scale: parseInt(scaleInput) } : {})
             };
 
             // Add region data
@@ -1062,12 +1093,15 @@
             const downloadMode = document.querySelector('input[name="downloadMode"]:checked');
             const useTimeSeries = downloadMode && downloadMode.value === 'timeseries';
 
+            const scaleInput = document.getElementById('scaleInput').value;
+
             let requestData = {
                 dataset,
                 start_date: startDate,
                 end_date: endDate,
                 region_type: regionType,
-                export_format: exportFormat
+                export_format: exportFormat,
+                ...(scaleInput ? { scale: parseInt(scaleInput) } : {})
             };
 
             // Only add revisit_days if time-series mode is selected

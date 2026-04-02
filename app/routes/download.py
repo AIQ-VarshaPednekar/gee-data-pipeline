@@ -137,8 +137,23 @@ async def download(request: Request):
         config = handler.get_config(dataset_id)
         export_format = body.get('export_format', 'GeoTIFF')
         drive_folder = body.get('drive_folder', DEFAULT_DRIVE_FOLDER)
-        
-        scale = config['scale']
+
+        native_scale = config['scale']
+        requested_scale = body.get('scale')
+
+        scale_warning = None
+        if requested_scale is not None:
+            try:
+                requested_scale = int(requested_scale)
+                if requested_scale < 1 or requested_scale > 100000:
+                    return {"success": False, "error": "Scale must be between 1 and 100000 metres"}
+                if requested_scale < native_scale:
+                    scale_warning = f"⚠️ Requested {requested_scale}m is finer than native {native_scale}m. Output will be upsampled (larger file, no extra detail)."
+                scale = requested_scale
+            except (ValueError, TypeError):
+                return {"success": False, "error": "Scale must be a valid number (e.g. 30)"}
+        else:
+            scale = native_scale
         
         # Validate format compatibility
         if export_format == 'CSV' and config['type'] == 'ImageCollection':
@@ -227,7 +242,8 @@ async def download(request: Request):
                     "bucket": bucket_name,
                     "message": f"Export started to GCS bucket '{bucket_name}'",
                     "estimated_size": f"~{estimated_mb:.1f}MB",
-                    "exact_clip": True
+                    "exact_clip": True,
+                    "scale_warning": scale_warning
                 }
             except Exception as e:
                 return {"success": False, "error": f"GCS export failed: {str(e)}"}
@@ -266,7 +282,8 @@ async def download(request: Request):
                     "folder": drive_folder,
                     "message": f"Large file (~{estimated_mb:.1f}MB) - Export started to Google Drive '{drive_folder}'",
                     "estimated_size": f"~{estimated_mb:.1f}MB",
-                    "exact_clip": True
+                    "exact_clip": True,
+                    "scale_warning": scale_warning
                 }
                 
             except Exception as export_error:
@@ -319,7 +336,8 @@ async def download(request: Request):
                     "filename": filename + '_exact.tif',
                     "file_size_mb": len(file_data) / (1024*1024),
                     "estimated_size": f"{len(file_data)/(1024*1024):.1f}MB",
-                    "message": f"✓ Exact boundary clip ready ({len(file_data)/(1024*1024):.1f} MB)"
+                    "message": f"✓ Exact boundary clip ready ({len(file_data)/(1024*1024):.1f} MB)",
+                    "scale_warning": scale_warning
                 }
             except Exception as download_error:
                 error_msg = str(download_error)
@@ -338,7 +356,8 @@ async def download(request: Request):
                 "export_method": "direct",
                 "download_url": url,
                 "format": "CSV",
-                "filename": filename + '.csv'
+                "filename": filename + '.csv',
+                "scale_warning": scale_warning
             }
             
     except Exception as e:

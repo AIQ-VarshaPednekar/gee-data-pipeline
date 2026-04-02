@@ -53,10 +53,18 @@ class UniversalGEEHandler:
             
             # Get scale using proper method - nominalScale() not crs_transform
             try:
-                proj = first_image.select(band_names[0]).projection()
-                scale = proj.nominalScale().getInfo()
-                if scale == 0 or scale > 200000:  # Fallback for invalid scales
-                    scale = 1000
+                # Try first 3 bands and take the MINIMUM (finest) scale
+                # Sentinel-2 B1=60m, B2=10m — we want 10m as the native scale
+                scales = []
+                for band in band_names[:3]:
+                    try:
+                        proj = first_image.select(band).projection()
+                        s = proj.nominalScale().getInfo()
+                        if 0 < s <= 200000:
+                            scales.append(s)
+                    except:
+                        pass
+                scale = min(scales) if scales else 1000
             except:
                 scale = 1000
             

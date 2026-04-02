@@ -52,7 +52,9 @@ async def preview_download(request: dict):
         detected_info = handler.detect_dataset_type(dataset_id)
         
         area_km2 = region.area().divide(1000000).getInfo()
-        scale = config['scale']
+        native_scale = config['scale']
+        requested_scale = request.get('scale')
+        scale = int(requested_scale) if requested_scale else native_scale
         estimated_mb = estimate_size_mb(area_km2, scale, len(config['bands']))
         
         # Size validation and warnings
@@ -108,8 +110,8 @@ async def preview_download(request: dict):
             "image_count": count,
             "bands": config['bands'],
             "band_details": detected_info.get('band_details', []),
-            "native_resolution": f"{config['scale']}m",
-            "export_resolution": f"{config['scale']}m",
+            "native_resolution": f"{native_scale}m",
+            "export_resolution": f"{scale}m",
             "estimated_size": size_str,
             "estimated_mb": estimated_mb,
             "size_warning": size_warning,
