@@ -14,7 +14,7 @@ import rasterio
 
 router = APIRouter()
 
-async def download_time_series(body, dataset_id, config, region, scale, drive_folder):
+async def download_time_series(body, dataset_id, config, region, scale, drive_folder, selected_bands=None, cloud_percentage=None):
     """Download individual files for each date in range"""
     from datetime import datetime, timedelta
     
@@ -43,6 +43,16 @@ async def download_time_series(body, dataset_id, config, region, scale, drive_fo
             collection = config['cloud_filter'](collection)
         except:
             pass
+
+    # Apply cloud percentage filter
+    if cloud_percentage is not None:
+        from app.gee_handler import handler as _h
+        cloud_prop = _h.get_cloud_property(dataset_id)
+        if cloud_prop:
+            try:
+                collection = collection.filter(ee.Filter.lt(cloud_prop, cloud_percentage))
+            except:
+                pass
     
     if config.get('preprocessing'):
         try:
@@ -68,6 +78,12 @@ async def download_time_series(body, dataset_id, config, region, scale, drive_fo
         
         # Convert all bands to Float32 to avoid type conflicts
         image = image.toFloat()
+
+        # Select only requested bands
+        if selected_bands:
+            valid = [b for b in selected_bands if b in config['bands']]
+            if valid:
+                image = image.select(valid)
         
         region_collection = ee.FeatureCollection([ee.Feature(region)])
         exact_clipped = image.clipToCollection(region_collection)
@@ -137,6 +153,13 @@ async def download(request: Request):
         config = handler.get_config(dataset_id)
         export_format = body.get('export_format', 'GeoTIFF')
         drive_folder = body.get('drive_folder', DEFAULT_DRIVE_FOLDER)
+        selected_bands = body.get('selected_bands') or None  # list or None
+        cloud_percentage = body.get('cloud_percentage')
+        if cloud_percentage is not None:
+            try:
+                cloud_percentage = float(cloud_percentage)
+            except (ValueError, TypeError):
+                cloud_percentage = None
 
         native_scale = config['scale']
         requested_scale = body.get('scale')
@@ -181,7 +204,7 @@ async def download(request: Request):
         # Check for time-series download
         revisit_days = body.get('revisit_days')
         if revisit_days and config['type'] == 'ImageCollection':
-            return await download_time_series(body, dataset_id, config, region, scale, drive_folder)
+            return await download_time_series(body, dataset_id, config, region, scale, drive_folder, selected_bands, cloud_percentage)
         
         # Process dataset (single composite)
         image, count = handler.process_dataset(
@@ -189,7 +212,9 @@ async def download(request: Request):
             start_date=body.get('start_date'),
             end_date=body.get('end_date'),
             region=region,
-            config=config
+            config=config,
+            selected_bands=selected_bands,
+            cloud_percentage=cloud_percentage
         )
         
         if image is None:
@@ -200,7 +225,8 @@ async def download(request: Request):
         
         # Calculate file size
         area_km2 = region.area().divide(1000000).getInfo()
-        estimated_mb = estimate_size_mb(area_km2, scale, len(config['bands']))
+        active_band_count = len(selected_bands) if selected_bands else len(config['bands'])
+        estimated_mb = estimate_size_mb(area_km2, scale, active_band_count)
         
         # IMPORTANT: GEE has TWO limits:
         # 1. Direct download: ~32MB file size limit via getDownloadURL()
@@ -365,4 +391,3 @@ async def download(request: Request):
         error_details = traceback.format_exc()
         print(f"Download error: {error_details}")
         return {"success": False, "error": f"Download failed: {str(e)}"}
-

@@ -700,25 +700,28 @@
                         console.log('Set revisit hours to:', result.revisit_hours);
                     }
 
-                    // Store band details globally for showAllBands function
+                    // Store band details globally
                     window.currentBandDetails = result.band_details || result.bands.map(b => ({ name: b, data_type: 'N/A', scale: 'N/A', crs: 'N/A' }));
+                    window.allBands = result.bands;
+                    window.cloudFilterSupport = result.cloud_filter_support || false;
+                    window.cloudFilterProperty = result.cloud_filter_property || null;
 
-                    // Enhanced band details display
-                    let bandDetails = '';
-                    if (result.band_details && result.band_details.length > 0) {
-                        bandDetails = result.band_details.slice(0, 12).map(band =>
-                            `<div class="band-item" style="padding: 8px; font-size: 0.85rem; border: 1px solid #e0e0e0; border-radius: 4px; background: white;">
-                                    <div style="font-weight: 600; color: #333;">${band.name}</div>
-                                    <div style="font-size: 0.75rem; color: #666; margin-top: 2px;">
-                                        ${band.data_type} | ${band.scale}m | ${band.crs}
-                                    </div>
-                                </div>`
-                        ).join('');
-                    } else {
-                        bandDetails = result.bands.slice(0, 12).map(b =>
-                            `<div class="band-item" style="padding: 6px 8px; font-size: 0.85rem; border: 1px solid #e0e0e0; border-radius: 4px;">${b}</div>`
-                        ).join('');
-                    }
+                    // Build band checkboxes (all bands, with scroll)
+                    const allBandDetails = result.band_details && result.band_details.length > 0
+                        ? result.band_details
+                        : result.bands.map(b => ({ name: b, data_type: 'N/A', scale: 'N/A', crs: 'N/A' }));
+
+                    const bandDetails = allBandDetails.map(band =>
+                        `<label class="band-checkbox-item" style="display:flex; align-items:flex-start; gap:8px; padding:8px 10px; font-size:0.85rem; border:1px solid #e0e0e0; border-radius:4px; background:white; cursor:pointer; transition: background 0.15s;">
+                            <input type="checkbox" class="band-checkbox" value="${band.name}" checked
+                                onchange="updateBandSelectionCount()"
+                                style="margin-top:2px; width:14px; height:14px; cursor:pointer; flex-shrink:0; accent-color:#1a1a1a;">
+                            <div>
+                                <div style="font-weight:600; color:#333;">${band.name}</div>
+                                <div style="font-size:0.73rem; color:#888; margin-top:1px;">${band.data_type !== 'N/A' ? band.data_type + ' | ' : ''}${band.scale !== 'N/A' ? band.scale + ' | ' : ''}${band.crs !== 'N/A' ? band.crs : ''}</div>
+                            </div>
+                        </label>`
+                    ).join('');
 
                     // Size warning display
                     // Scale/upsampling warning display
@@ -863,12 +866,34 @@
                                 </div>
                                 
                                 <div class="bands-list">
-                                    <h4>Band Information (${result.bands.length} total)</h4>
-                                    <div id="bandsList" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 8px; max-height: 300px; overflow-y: auto;">
+                                    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:0.6rem;">
+                                        <h4 style="margin:0;">ALL BANDS (<span id="selectedBandCount">${result.bands.length}</span>/${result.bands.length} selected)</h4>
+                                        <div style="display:flex; gap:6px;">
+                                            <button onclick="selectAllBands(true)" style="padding:3px 10px; font-size:0.75rem; background:#1a1a1a; color:white; border:none; border-radius:4px; cursor:pointer;">All</button>
+                                            <button onclick="selectAllBands(false)" style="padding:3px 10px; font-size:0.75rem; background:white; color:#333; border:1px solid #d1d5db; border-radius:4px; cursor:pointer;">None</button>
+                                        </div>
+                                    </div>
+                                    <div id="bandsList" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(190px,1fr)); gap:6px; max-height:260px; overflow-y:auto; padding-right:2px;">
                                         ${bandDetails}
                                     </div>
-                                    ${result.bands.length > 12 ? `<div style="text-align: center; margin-top: 8px;"><button onclick="showAllBands()" style="background: #f0f0f0; border: 1px solid #ccc; padding: 4px 12px; border-radius: 4px; cursor: pointer; font-size: 0.85rem;">Show All ${result.bands.length} Bands</button></div>` : ''}
                                 </div>
+
+                                ${result.cloud_filter_support ? `
+                                <div style="background:#f0f9ff; border:1px solid #bae6fd; border-radius:6px; padding:0.9rem 1rem; margin:0.75rem 0;">
+                                    <div style="display:flex; align-items:center; gap:6px; margin-bottom:0.5rem;">
+                                        <span style="font-size:0.8rem; font-weight:600; color:#0369a1; text-transform:uppercase; letter-spacing:0.05em;">☁️ Cloud Filter</span>
+                                        <span style="font-size:0.72rem; color:#0284c7; background:#e0f2fe; padding:1px 6px; border-radius:3px;">${result.cloud_filter_property}</span>
+                                    </div>
+                                    <div style="display:flex; align-items:center; gap:10px;">
+                                        <input type="range" id="cloudSlider" min="0" max="100" value="100" step="5"
+                                            oninput="document.getElementById('cloudPctLabel').textContent = this.value + '%'"
+                                            style="flex:1; accent-color:#0ea5e9; cursor:pointer;">
+                                        <span id="cloudPctLabel" style="font-size:0.9rem; font-weight:700; color:#0369a1; min-width:40px;">100%</span>
+                                    </div>
+                                    <div style="font-size:0.75rem; color:#64748b; margin-top:4px;">
+                                        Only include images with cloud cover ≤ threshold. <strong>100% = no filter.</strong>
+                                    </div>
+                                </div>` : ''}
                                 
                                 ${downloadModeSelector}
                                 
@@ -918,21 +943,35 @@
             }
         }
 
+        function selectAllBands(checked) {
+            document.querySelectorAll('.band-checkbox').forEach(cb => cb.checked = checked);
+            updateBandSelectionCount();
+        }
+
+        function updateBandSelectionCount() {
+            const total = document.querySelectorAll('.band-checkbox').length;
+            const selected = document.querySelectorAll('.band-checkbox:checked').length;
+            const el = document.getElementById('selectedBandCount');
+            if (el) el.textContent = selected;
+        }
+
+        function getSelectedBands() {
+            const checked = Array.from(document.querySelectorAll('.band-checkbox:checked')).map(cb => cb.value);
+            const all = window.allBands || [];
+            // If all bands selected, send null (download all)
+            if (checked.length === all.length) return null;
+            return checked.length > 0 ? checked : null;
+        }
+
+        function getCloudPercentage() {
+            const slider = document.getElementById('cloudSlider');
+            if (!slider) return null;
+            const val = parseInt(slider.value);
+            return val >= 100 ? null : val;  // 100 = no filter
+        }
+
         function showAllBands() {
-            const allBands = window.currentBandDetails || [];
-            const bandListDiv = document.querySelector('.bands-list');
-
-            const bandDetails = allBands.map(band =>
-                `<div class="band-item">
-                        <strong>${band.name}</strong><br>
-                        ${band.pixel_size_m}m | ${band.crs}
-                    </div>`
-            ).join('');
-
-            bandListDiv.innerHTML = `
-                    <h4>All Bands (${allBands.length} total)</h4>
-                    ${bandDetails}
-                `;
+            // kept for compatibility — no longer needed with checkbox UI
         }
 
         // Global variable to store pending download request
@@ -962,7 +1001,9 @@
                 export_format: exportFormat,
                 export_to: 'gcs',
                 gcs_bucket: bucketName,
-                ...(scaleInput ? { scale: parseInt(scaleInput) } : {})
+                ...(scaleInput ? { scale: parseInt(scaleInput) } : {}),
+                ...(getSelectedBands() ? { selected_bands: getSelectedBands() } : {}),
+                ...(getCloudPercentage() !== null ? { cloud_percentage: getCloudPercentage() } : {})
             };
 
             // Add region data
@@ -1101,7 +1142,9 @@
                 end_date: endDate,
                 region_type: regionType,
                 export_format: exportFormat,
-                ...(scaleInput ? { scale: parseInt(scaleInput) } : {})
+                ...(scaleInput ? { scale: parseInt(scaleInput) } : {}),
+                ...(getSelectedBands() ? { selected_bands: getSelectedBands() } : {}),
+                ...(getCloudPercentage() !== null ? { cloud_percentage: getCloudPercentage() } : {})
             };
 
             // Only add revisit_days if time-series mode is selected

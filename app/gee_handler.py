@@ -258,8 +258,22 @@ class UniversalGEEHandler:
         
         return final_config
     
-    def process_dataset(self, dataset_id: str, start_date: Optional[str], end_date: Optional[str], 
-                       region: ee.Geometry, config: Dict) -> Tuple[Optional[ee.Image], int]:
+    def get_cloud_property(self, dataset_id: str) -> Optional[str]:
+        """Return the cloud cover property name for known datasets, or None if not applicable."""
+        if 'COPERNICUS/S2' in dataset_id:
+            return 'CLOUDY_PIXEL_PERCENTAGE'
+        if 'LANDSAT/LC08' in dataset_id or 'LANDSAT/LC09' in dataset_id:
+            return 'CLOUD_COVER'
+        if 'LANDSAT/LE07' in dataset_id or 'LANDSAT/LT05' in dataset_id:
+            return 'CLOUD_COVER'
+        if 'LANDSAT/LC08/C02' in dataset_id or 'LANDSAT/LC09/C02' in dataset_id:
+            return 'CLOUD_COVER'
+        return None
+
+    def process_dataset(self, dataset_id: str, start_date: Optional[str], end_date: Optional[str],
+                       region: ee.Geometry, config: Dict,
+                       selected_bands: Optional[List[str]] = None,
+                       cloud_percentage: Optional[float] = None) -> Tuple[Optional[ee.Image], int]:
         """Process any dataset based on configuration"""
         
         if config['type'] == 'Image':
@@ -306,6 +320,15 @@ class UniversalGEEHandler:
             # if 'COPERNICUS/S2' in dataset_id or 'SENTINEL' in dataset_id.upper():
             #     collection = collection.filter(ee.Filter.lt('CLOUDY_PIXEL_PERCENTAGE', 20))
             
+            # Cloud filtering via cloud_percentage parameter
+            cloud_prop = self.get_cloud_property(dataset_id)
+            if cloud_percentage is not None and cloud_prop:
+                try:
+                    collection = collection.filter(ee.Filter.lt(cloud_prop, cloud_percentage))
+                    print(f"✓ Applied cloud filter: {cloud_prop} < {cloud_percentage}%")
+                except Exception as e:
+                    print(f"Cloud filter failed: {e}")
+
             # Cloud filtering (if curated config has it)
             if config.get('cloud_filter'):
                 try:
@@ -355,6 +378,13 @@ class UniversalGEEHandler:
             
             # Normalize for proper visualization
             image = self.normalize_image(image, dataset_id)
+
+            # Select only requested bands (after normalization to keep band names intact)
+            if selected_bands:
+                valid = [b for b in selected_bands if b in config['bands']]
+                if valid:
+                    image = image.select(valid)
+                    print(f"✓ Selected bands: {valid}")
             
             return image, count
         

@@ -48,6 +48,9 @@ async def preview_download(request: dict):
                 "error": f"No images found for {dataset_id}. Try different date range or region."
             }
         
+        # Detect cloud filter support
+        cloud_prop = handler.get_cloud_property(dataset_id)
+        
         # Get comprehensive dataset information
         detected_info = handler.detect_dataset_type(dataset_id)
         
@@ -121,7 +124,9 @@ async def preview_download(request: dict):
             "date_range": detected_info.get('date_range'),
             "image_date": detected_info.get('image_date'),
             "sample_image_url": sample_image_url,
-            "dataset_type_info": detected_info.get('dataset_type_info', config['type'])
+            "dataset_type_info": detected_info.get('dataset_type_info', config['type']),
+            "cloud_filter_support": cloud_prop is not None,
+            "cloud_filter_property": cloud_prop
         }
         
         # Get revisit interval and actual dates for ImageCollections
@@ -160,4 +165,3 @@ async def preview_download(request: dict):
         
     except Exception as e:
         return {"success": False, "error": f"Analysis failed: {str(e)}"}
-
