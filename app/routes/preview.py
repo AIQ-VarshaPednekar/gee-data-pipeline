@@ -15,7 +15,10 @@ async def preview_download(request: dict):
     
     try:
         dataset_id = request['dataset']
-        config = handler.get_config(dataset_id=dataset_id)
+        # Read user-selected reduction method (None = auto-detect)
+        user_reduction = request.get('reduction_method')  # e.g. "mean", "median", etc.
+        overrides = {'composite_method': user_reduction} if user_reduction else None
+        config = handler.get_config(dataset_id=dataset_id, user_overrides=overrides)
         
         # Get region - handle both old and new formats
         region_type = request['region_type']
@@ -119,7 +122,9 @@ async def preview_download(request: dict):
             "estimated_mb": estimated_mb,
             "size_warning": size_warning,
             "area_km2": f"{area_km2:.1f}",
-            "composite_method": config['composite_method'],
+            "composite_method": config['composite_method'],          # final (may be user-selected)
+            "auto_composite_method": handler.get_smart_composite_method(dataset_id, config['bands']),
+            "available_reduction_methods": handler.REDUCTION_METHODS,
             "requires_date": config['requires_date'],
             "date_range": detected_info.get('date_range'),
             "image_date": detected_info.get('image_date'),

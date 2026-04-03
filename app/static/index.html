@@ -411,9 +411,22 @@
             </div>
 
             <div class="form-group">
-                <label for="scaleInput">Resolution (metres) <span style="color: #999; font-size: 0.75rem;">optional — leave blank for native</span></label>
+                <label for="scaleInput">Pixel Length (metres) </label>
                 <input type="number" id="scaleInput" placeholder="e.g. 30" min="1" max="100000" step="1">
-                <small style="color: #666; font-size: 0.8rem;">Native resolution is shown after clicking Analyze Dataset</small>
+            </div>
+
+            <div class="form-group">
+                <label for="reductionMethod">Reduction Method</label>
+                <select id="reductionMethod">
+                    <option value="">Auto (recommended)</option>
+                    <option value="median">Median</option>
+                    <option value="mean">Mean</option>
+                    <option value="sum">Sum</option>
+                    <option value="mode">Mode</option>
+                    <option value="mosaic">Mosaic</option>
+                    <option value="first">First image</option>
+                </select>
+                <small id="reductionHint" style="color: #888; font-size: 0.8rem;"></small>
             </div>
 
             <div class="form-group">
@@ -640,7 +653,8 @@
                 end_date: endDate,
                 region_type: regionType,
                 region_name: regionType,
-                ...(scaleInput ? { scale: parseInt(scaleInput) } : {})
+                ...(scaleInput ? { scale: parseInt(scaleInput) } : {}),
+                reduction_method: document.getElementById('reductionMethod').value || null
             };
 
             // Add region-specific data
@@ -705,6 +719,11 @@
                     window.allBands = result.bands;
                     window.cloudFilterSupport = result.cloud_filter_support || false;
                     window.cloudFilterProperty = result.cloud_filter_property || null;
+                    // Show auto-detected method as hint
+                    if (result.auto_composite_method) {
+                        const hint = document.getElementById('reductionHint');
+                        if (hint) hint.textContent = `Auto-detected: ${result.auto_composite_method}`;
+                    }
 
                     // Build band checkboxes (all bands, with scroll)
                     const allBandDetails = result.band_details && result.band_details.length > 0
@@ -851,12 +870,12 @@
                                         <span>${result.area_km2} km²</span>
                                     </div>
                                     <div class="info-item">
-                                        <strong>Native Resolution</strong>
+                                        <strong>Native Pixel Length</strong>
                                         <span>${result.native_resolution}</span>
                                     </div>
                                     ${result.export_resolution !== result.native_resolution ? `
                                     <div class="info-item" style="border-left-color: #f59e0b;">
-                                        <strong>Export Resolution</strong>
+                                        <strong>Export Pixel Length</strong>
                                         <span style="color: #d97706;">${result.export_resolution} ⚠️ custom</span>
                                     </div>` : ''}
                                     <div class="info-item">
@@ -881,7 +900,7 @@
                                 ${result.cloud_filter_support ? `
                                 <div style="background:#f0f9ff; border:1px solid #bae6fd; border-radius:6px; padding:0.9rem 1rem; margin:0.75rem 0;">
                                     <div style="display:flex; align-items:center; gap:6px; margin-bottom:0.5rem;">
-                                        <span style="font-size:0.8rem; font-weight:600; color:#0369a1; text-transform:uppercase; letter-spacing:0.05em;">☁️ Cloud Filter</span>
+                                        <span style="font-size:0.8rem; font-weight:600; color:#0369a1; text-transform:uppercase; letter-spacing:0.05em;">Cloud Filter</span>
                                         <span style="font-size:0.72rem; color:#0284c7; background:#e0f2fe; padding:1px 6px; border-radius:3px;">${result.cloud_filter_property}</span>
                                     </div>
                                     <div style="display:flex; align-items:center; gap:10px;">
@@ -891,7 +910,7 @@
                                         <span id="cloudPctLabel" style="font-size:0.9rem; font-weight:700; color:#0369a1; min-width:40px;">100%</span>
                                     </div>
                                     <div style="font-size:0.75rem; color:#64748b; margin-top:4px;">
-                                        Only include images with cloud cover ≤ threshold. <strong>100% = no filter.</strong>
+                                        // Only include images with cloud cover ≤ threshold. <strong>100% = no filter.</strong>
                                     </div>
                                 </div>` : ''}
                                 
@@ -1003,7 +1022,8 @@
                 gcs_bucket: bucketName,
                 ...(scaleInput ? { scale: parseInt(scaleInput) } : {}),
                 ...(getSelectedBands() ? { selected_bands: getSelectedBands() } : {}),
-                ...(getCloudPercentage() !== null ? { cloud_percentage: getCloudPercentage() } : {})
+                ...(getCloudPercentage() !== null ? { cloud_percentage: getCloudPercentage() } : {}),
+                reduction_method: document.getElementById('reductionMethod').value || null
             };
 
             // Add region data
@@ -1144,7 +1164,8 @@
                 export_format: exportFormat,
                 ...(scaleInput ? { scale: parseInt(scaleInput) } : {}),
                 ...(getSelectedBands() ? { selected_bands: getSelectedBands() } : {}),
-                ...(getCloudPercentage() !== null ? { cloud_percentage: getCloudPercentage() } : {})
+                ...(getCloudPercentage() !== null ? { cloud_percentage: getCloudPercentage() } : {}),
+                reduction_method: document.getElementById('reductionMethod').value || null
             };
 
             // Only add revisit_days if time-series mode is selected

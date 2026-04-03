@@ -22,6 +22,7 @@ class UniversalGEEHandler:
         'COPERNICUS/S5P': 2,
         'FIRMS': 1,  # Fire Information for Resource Management System (daily)
     }
+    REDUCTION_METHODS = ['median', 'mean', 'sum', 'mode', 'mosaic', 'first']
     
     def get_revisit_interval(self, dataset_id: str) -> Dict:
         """Get revisit interval from known database"""

@@ -160,6 +160,11 @@ async def download(request: Request):
                 cloud_percentage = float(cloud_percentage)
             except (ValueError, TypeError):
                 cloud_percentage = None
+                
+        user_reduction = body.get('reduction_method')
+        if user_reduction:
+            overrides = {'composite_method': user_reduction}
+            config = handler.get_config(dataset_id, user_overrides=overrides)
 
         native_scale = config['scale']
         requested_scale = body.get('scale')
