@@ -159,10 +159,11 @@ async def preview_download(request: dict):
                         response_data['unique_date_count'] = date_info['unique_dates']
                         response_data['total_image_count'] = date_info['total_images']
                     
-                    # Get per-day image counts for individual file downloads
-                    response_data['daily_breakdown'] = handler.get_daily_image_counts(
-                        dataset_id, request['start_date'], request['end_date'], region
-                    )
+                    # Get per-day image counts only if user opted in
+                    if request.get('include_daily_breakdown'):
+                        response_data['daily_breakdown'] = handler.get_daily_image_counts(
+                            dataset_id, request['start_date'], request['end_date'], region
+                        )
             except Exception as e:
                 print(f"Error getting revisit interval: {e}")
         
